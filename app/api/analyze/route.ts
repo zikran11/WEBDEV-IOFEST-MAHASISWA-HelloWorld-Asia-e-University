@@ -12,7 +12,7 @@ export async function POST(req: Request) {
         { status: 400 }
       );
     }
-
+//pus
     const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY!);
 
     // 🔥 gunakan model yang tersedia untuk generateContent
