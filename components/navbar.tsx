@@ -17,17 +17,20 @@ import {
 } from '@/components/ui/dropdown-menu'
 import { cn } from '@/lib/utils'
 
-const navLinks = [
-  { href: '/', label: 'Beranda' },
-  { href: '/scan', label: 'Scan Limbah' },
-  { href: '/blog', label: 'Edukasi' },
-  { href: '/dashboard', label: 'Dashboard' },
-]
-
 export function Navbar() {
   const pathname = usePathname()
   const { user, logout, loading } = useAuth()
   const [open, setOpen] = useState(false)
+
+  const navLinks = [
+    { href: '/', label: 'Beranda' },
+    { href: '/scan', label: 'Scan Limbah' },
+    { href: '/blog', label: 'Artikel' },
+    ...(user ? [
+      { href: '/blog/create', label: 'Blog' },
+      { href: '/dashboard', label: 'Dashboard' },
+    ] : []),
+  ]
 
   return (
     <header className="sticky top-0 z-50 w-full border-b border-border/40 bg-background/95 backdrop-blur">

@@ -17,7 +17,7 @@ import {
   ArrowRight,
   Coins
 } from 'lucide-react'
-import { getScanHistory, getTotalStats } from '@/lib/waste-store'
+import { getUserScanHistory } from '@/lib/user-scan-store'
 import { formatCurrency, WasteAnalysisResult } from '@/lib/mock-ai-data'
 import { useAuth } from '@/contexts/auth-context'
 
@@ -27,13 +27,35 @@ export default function DashboardPage() {
 
   const [stats, setStats] = useState<any>(null)
   const [recentScans, setRecentScans] = useState<WasteAnalysisResult[]>([])
+  const [loading, setLoading] = useState(true)
 
   const pageRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
-    setStats(getTotalStats())
-    setRecentScans(getScanHistory().slice(0, 3))
-  }, [])
+    const loadHistory = async () => {
+      if (!user) {
+        setStats(null)
+        setRecentScans([])
+        setLoading(false)
+        return
+      }
+
+      setLoading(true)
+      const history = await getUserScanHistory(user.uid)
+      setRecentScans(history.slice(0, 3))
+      setStats({
+        totalScans: history.length,
+        totalEconomicValue: history.reduce((sum, scan) => sum + scan.pricePerKg, 0),
+        totalCo2Reduction: history.reduce((sum, scan) => sum + scan.environmentalImpact.co2Reduction, 0),
+        totalEnergySaving: history.reduce((sum, scan) => sum + scan.environmentalImpact.energySaving, 0),
+        totalWaterSaving: history.reduce((sum, scan) => sum + scan.environmentalImpact.waterSaving, 0),
+        totalTreeEquivalent: history.reduce((sum, scan) => sum + scan.environmentalImpact.treeEquivalent, 0),
+      })
+      setLoading(false)
+    }
+
+    loadHistory()
+  }, [user])
 
   useEffect(() => {
     gsap.registerPlugin(ScrollTrigger)
@@ -50,7 +72,30 @@ export default function DashboardPage() {
     return () => ctx.revert()
   }, [])
 
-  if (!stats) return null
+  if (!user) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-b from-background to-secondary/20 py-10">
+        <div className="max-w-xl w-full p-8 rounded-3xl border border-border/70 bg-white shadow-lg text-center">
+          <Badge className="mb-4 bg-primary/10 text-primary border-primary/20">Dashboard</Badge>
+          <h1 className="text-3xl font-bold mb-3">Login untuk menyimpan hasil scan ke dashboard</h1>
+          <p className="text-muted-foreground mb-6">
+            Untuk melihat riwayat, statistik, dan kontribusi limbah Anda, silakan masuk terlebih dahulu.
+          </p>
+          <Button asChild>
+            <Link href="/login">Masuk Sekarang</Link>
+          </Button>
+        </div>
+      </div>
+    )
+  }
+
+  if (loading || !stats) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="animate-spin w-10 h-10 border-4 border-primary border-t-transparent rounded-full" />
+      </div>
+    )
+  }
 
   // progress calc
   const scanTarget = 50

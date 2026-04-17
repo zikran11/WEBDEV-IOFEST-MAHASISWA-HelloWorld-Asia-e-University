@@ -10,6 +10,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Progress } from '@/components/ui/progress'
 import { Badge } from '@/components/ui/badge'
 import { Separator } from '@/components/ui/separator'
+import { useAuth } from '@/contexts/auth-context'
 import {
   Camera,
   TreePine,
@@ -27,6 +28,7 @@ import { cn } from '@/lib/utils'
 
 export default function ResultPage() {
   const router = useRouter()
+  const { user } = useAuth()
   const [result, setResult] = useState<WasteAnalysisResult | null>(null)
   const pageRef = useRef<HTMLDivElement>(null)
   const headerRef = useRef<HTMLDivElement>(null)
@@ -201,6 +203,7 @@ export default function ResultPage() {
           <h1 className="text-3xl md:text-4xl font-bold text-foreground">
             Hasil Identifikasi Limbah
           </h1>
+
         </div>
 
         {/* Main Result Card */}

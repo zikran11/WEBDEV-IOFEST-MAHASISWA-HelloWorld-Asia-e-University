@@ -10,9 +10,13 @@ import { Camera, Upload, X, ImageIcon } from 'lucide-react'
 import { WasteAnalysisResult, getWasteCategoryData } from '@/lib/mock-ai-data'
 import { normalizeWasteCategory } from '@/lib/waste-utils'
 import { addScanToHistory } from '@/lib/waste-store'
+import { saveUserScanResult } from '@/lib/user-scan-store'
+import { useAuth } from '@/contexts/auth-context'
+import { toast } from 'sonner'
 
 export default function ScanPage() {
   const router = useRouter()
+  const { user } = useAuth()
 
   const [image, setImage] = useState<string | null>(null)
   const [isAnalyzing, setIsAnalyzing] = useState(false)
@@ -73,6 +77,11 @@ export default function ScanPage() {
   /* ================= ANALYZE ================= */
 const analyzeImage = async (imageData: string) => {
   try {
+    if (typeof navigator !== 'undefined' && !navigator.onLine) {
+      toast.error('Tidak ada koneksi internet. Silakan scan ulang lagi.')
+      return
+    }
+
     setIsAnalyzing(true)
 
     const res = await fetch('/api/analyze', {
@@ -82,6 +91,11 @@ const analyzeImage = async (imageData: string) => {
         imageBase64: imageData.split(',')[1]
       })
     })
+
+    if (!res.ok) {
+      toast.error('Tidak ada koneksi internet. Silakan scan ulang lagi.')
+      return
+    }
 
     const ai = await res.json()
     const category = normalizeWasteCategory(ai.category, ai.item_name)
@@ -132,16 +146,20 @@ const analyzeImage = async (imageData: string) => {
   createdAt: new Date(), // ✅ WAJIB
 }
 
-    // ✅ simpan history
-    addScanToHistory(result)
-
     sessionStorage.setItem('lastScanResult', JSON.stringify(result))
+
+    if (user) {
+      addScanToHistory(result)
+      await saveUserScanResult(user.uid, result)
+    } else {
+      toast('Login untuk menyimpan hasil scan ke dashboard')
+    }
 
     router.push('/scan/result')
 
   } catch (err) {
     console.error(err)
-    alert('Gagal analisis AI')
+    toast.error('Tidak ada koneksi internet. Silakan scan ulang lagi.')
   } finally {
     setIsAnalyzing(false)
   }
@@ -180,7 +198,6 @@ const capturePhoto = async () => {
     const reader = new FileReader()
     reader.onload = async (ev) => {
       const img = ev.target?.result as string
-      setImage(img)
       await analyzeImage(img)
     }
     reader.readAsDataURL(file)
