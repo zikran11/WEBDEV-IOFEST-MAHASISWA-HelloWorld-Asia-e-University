@@ -14,6 +14,23 @@ import { Leaf, Loader2, Mail, Lock, AlertCircle, CheckCircle2 } from 'lucide-rea
 import { useAuth } from '@/contexts/auth-context'
 import { toast } from 'sonner'
 
+const getFriendlyErrorMessage = (err: unknown) => {
+  if (
+    typeof err === 'object' &&
+    err !== null &&
+    'code' in err &&
+    typeof (err as { code?: string }).code === 'string'
+  ) {
+    const code = (err as { code: string }).code
+    if (code === 'auth/email-already-in-use') return 'Email sudah terdaftar'
+    if (code === 'auth/invalid-email') return 'Format email tidak valid'
+    if (code === 'auth/weak-password') return 'Password terlalu lemah'
+    if (code === 'auth/popup-closed-by-user') return 'Login Google dibatalkan'
+  }
+
+  return err instanceof Error ? err.message : 'Terjadi kesalahan saat mendaftar'
+}
+
 export default function RegisterPage() {
   const router = useRouter()
   const { user, signUp, signInWithGoogle, loading: authLoading } = useAuth()
@@ -82,7 +99,7 @@ export default function RegisterPage() {
       toast.success('Akun berhasil dibuat!')
       router.push('/dashboard')
     } catch (err: unknown) {
-      const errorMessage = err instanceof Error ? err.message : 'Gagal membuat akun'
+      const errorMessage = getFriendlyErrorMessage(err)
       setError(errorMessage)
       toast.error('Gagal mendaftar')
     } finally {
@@ -99,8 +116,9 @@ export default function RegisterPage() {
       toast.success('Berhasil masuk dengan Google!')
       router.push('/dashboard')
     } catch (err: unknown) {
-      const errorMessage = err instanceof Error ? err.message : 'Gagal masuk dengan Google'
+      const errorMessage = getFriendlyErrorMessage(err)
       setError(errorMessage)
+      toast.error('Gagal masuk dengan Google')
     } finally {
       setIsLoading(false)
     }
@@ -119,7 +137,7 @@ export default function RegisterPage() {
   }
 
   return (
-    <div ref={pageRef} className="min-h-screen flex items-center justify-center py-12 px-4 bg-gradient-to-b from-background to-secondary/20">
+    <div ref={pageRef} className="min-h-screen flex items-center justify-center py-12 px-4 bg-linear-to-b from-background to-secondary/20">
       <div ref={cardRef} className="w-full max-w-md">
         {/* Logo */}
         <div className="flex justify-center mb-8">
@@ -141,7 +159,7 @@ export default function RegisterPage() {
           <CardContent>
             {error && (
               <div className="mb-4 p-3 rounded-lg bg-destructive/10 border border-destructive/20 flex items-center gap-2 text-sm text-destructive">
-                <AlertCircle className="w-4 h-4 flex-shrink-0" />
+                <AlertCircle className="w-4 h-4 shrink-0" />
                 {error}
               </div>
             )}
@@ -224,7 +242,7 @@ export default function RegisterPage() {
                   checked={agreeTerms}
                   onCheckedChange={(checked) => setAgreeTerms(checked as boolean)}
                   disabled={isLoading}
-                  className="translate-y-[2px]"
+                  className="translate-y-0.5"
                 />
                 <label htmlFor="terms" className="text-sm leading-snug cursor-pointer">
                   Saya menyetujui{' '}
@@ -260,6 +278,16 @@ export default function RegisterPage() {
                 atau
               </span>
             </div>
+
+            <Button
+              type="button"
+              variant="outline"
+              className="w-full"
+              onClick={handleGoogleSignIn}
+              disabled={isLoading}
+            >
+              Daftar/Masuk dengan Google
+            </Button>
 
 
             <p className="mt-6 text-center text-sm text-muted-foreground">

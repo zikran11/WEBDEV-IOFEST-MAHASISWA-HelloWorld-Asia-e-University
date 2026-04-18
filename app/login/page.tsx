@@ -13,6 +13,23 @@ import { Leaf, Loader2, Mail, Lock, AlertCircle } from 'lucide-react'
 import { useAuth } from '@/contexts/auth-context'
 import { toast } from 'sonner'
 
+const getFriendlyErrorMessage = (err: unknown) => {
+  if (
+    typeof err === 'object' &&
+    err !== null &&
+    'code' in err &&
+    typeof (err as { code?: string }).code === 'string'
+  ) {
+    const code = (err as { code: string }).code
+    if (code === 'auth/invalid-credential') return 'Email atau password salah'
+    if (code === 'auth/user-not-found') return 'Akun tidak ditemukan'
+    if (code === 'auth/too-many-requests') return 'Terlalu banyak percobaan. Coba lagi nanti'
+    if (code === 'auth/popup-closed-by-user') return 'Login Google dibatalkan'
+  }
+
+  return err instanceof Error ? err.message : 'Terjadi kesalahan saat masuk'
+}
+
 export default function LoginPage() {
   const router = useRouter()
   const { user, signIn, signInWithGoogle, loading: authLoading } = useAuth()
@@ -53,7 +70,7 @@ useEffect(() => {
       toast.success('Berhasil masuk!')
       router.push('/dashboard')
     } catch (err: unknown) {
-      const errorMessage = err instanceof Error ? err.message : 'Email atau password salah'
+      const errorMessage = getFriendlyErrorMessage(err)
       setError(errorMessage)
       toast.error('Gagal masuk')
     } finally {
@@ -70,8 +87,9 @@ useEffect(() => {
       toast.success('Berhasil masuk dengan Google!')
       router.push('/dashboard')
     } catch (err: unknown) {
-      const errorMessage = err instanceof Error ? err.message : 'Gagal masuk dengan Google'
+      const errorMessage = getFriendlyErrorMessage(err)
       setError(errorMessage)
+      toast.error('Gagal masuk dengan Google')
     } finally {
       setIsLoading(false)
     }
@@ -90,7 +108,7 @@ useEffect(() => {
   }
 
   return (
-    <div ref={pageRef} className="min-h-screen flex items-center justify-center py-12 px-4 bg-gradient-to-b from-background to-secondary/20">
+    <div ref={pageRef} className="min-h-screen flex items-center justify-center py-12 px-4 bg-linear-to-b from-background to-secondary/20">
       <div ref={cardRef} className="w-full max-w-md">
         {/* Logo */}
         <div className="flex justify-center mb-8">
@@ -112,7 +130,7 @@ useEffect(() => {
           <CardContent>
             {error && (
               <div className="mb-4 p-3 rounded-lg bg-destructive/10 border border-destructive/20 flex items-center gap-2 text-sm text-destructive">
-                <AlertCircle className="w-4 h-4 flex-shrink-0" />
+                <AlertCircle className="w-4 h-4 shrink-0" />
                 {error}
               </div>
             )}
@@ -175,6 +193,16 @@ useEffect(() => {
                 atau
               </span>
             </div>
+
+            <Button
+              type="button"
+              variant="outline"
+              className="w-full"
+              onClick={handleGoogleSignIn}
+              disabled={isLoading}
+            >
+              Masuk dengan Google
+            </Button>
 
 
 
