@@ -15,12 +15,12 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
-import { ArrowLeft, Loader2, ImageIcon } from 'lucide-react'
-import { createPost } from '@/lib/blog-store'
+import { ArrowLeft, Loader2 } from 'lucide-react'
+import { createPost, getCategories } from '@/lib/blog-store'
 import { useAuth } from '@/contexts/auth-context'
 import { toast } from 'sonner'
 
-const categories = [
+const defaultCategories = [
   'Daur Ulang',
   'Edukasi',
   'Komunitas',
@@ -29,23 +29,17 @@ const categories = [
   'Teknologi'
 ]
 
-const coverImages = [
-  'https://images.unsplash.com/photo-1532996122724-e3c354a0b15b?w=800',
-  'https://images.unsplash.com/photo-1542601906990-b4d3fb778b09?w=800',
-  'https://images.unsplash.com/photo-1532187863486-abf9dbad1b69?w=800',
-  'https://images.unsplash.com/photo-1558618666-fcd25c85cd64?w=800',
-  'https://images.unsplash.com/photo-1581091226825-a6a2a5aee158?w=800'
-]
-
 export default function CreateBlogPage() {
   const router = useRouter()
   const { user, loading } = useAuth()
+  const [categories, setCategories] = useState<string[]>(defaultCategories)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [title, setTitle] = useState('')
   const [excerpt, setExcerpt] = useState('')
   const [content, setContent] = useState('')
   const [category, setCategory] = useState('')
-  const [coverImage, setCoverImage] = useState(coverImages[0])
+  const [coverImageFile, setCoverImageFile] = useState<File | null>(null)
+  const [coverImagePreview, setCoverImagePreview] = useState('')
   const pageRef = useRef<HTMLDivElement>(null)
   const formRef = useRef<HTMLDivElement>(null)
 
@@ -54,6 +48,13 @@ export default function CreateBlogPage() {
       router.push('/login')
     }
   }, [user, loading, router])
+
+  useEffect(() => {
+    const existingCategories = getCategories()
+    if (existingCategories.length > 0) {
+      setCategories(existingCategories)
+    }
+  }, [])
 
   useEffect(() => {
     const ctx = gsap.context(() => {
@@ -67,36 +68,76 @@ export default function CreateBlogPage() {
     return () => ctx.revert()
   }, [])
 
+  useEffect(() => {
+    if (!coverImageFile) {
+      setCoverImagePreview('')
+      return
+    }
+
+    const objectUrl = URL.createObjectURL(coverImageFile)
+    setCoverImagePreview(objectUrl)
+
+    return () => URL.revokeObjectURL(objectUrl)
+  }, [coverImageFile])
+
+  const uploadImageToCloudinary = async (file: File) => {
+    const cloudName = process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME
+    const uploadPreset = process.env.NEXT_PUBLIC_CLOUDINARY_UPLOAD_PRESET
+
+    if (!cloudName || !uploadPreset) {
+      throw new Error('Cloudinary config is missing')
+    }
+
+    const formData = new FormData()
+    formData.append('file', file)
+    formData.append('upload_preset', uploadPreset)
+    formData.append('folder', 'smart-waste/blog')
+
+    const response = await fetch(
+      `https://api.cloudinary.com/v1_1/${cloudName}/image/upload`,
+      {
+        method: 'POST',
+        body: formData
+      }
+    )
+
+    if (!response.ok) {
+      throw new Error('Failed to upload image')
+    }
+
+    const result = await response.json()
+    return result.secure_url as string
+  }
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
 
-    if (!title || !excerpt || !content || !category) {
-      toast.error('Mohon lengkapi semua field')
+    if (!title || !excerpt || !content || !category || !coverImageFile) {
+      toast.error('Mohon lengkapi semua field termasuk gambar cover')
       return
     }
 
     setIsSubmitting(true)
 
     try {
-      // Simulate API delay
-      await new Promise(resolve => setTimeout(resolve, 1000))
+      const coverImageUrl = await uploadImageToCloudinary(coverImageFile)
 
       createPost({
         title,
         excerpt,
         content,
         category,
-        coverImage,
+        coverImage: coverImageUrl,
         author: {
           name: user?.email?.split('@')[0] || 'Anonymous',
           email: user?.email || 'anonymous@example.com'
         }
       })
 
-      toast.success('Artikel berhasil dipublikasikan!')
+      toast.success('Blog berhasil dipublikasikan!')
       router.push('/blog')
     } catch (error) {
-      toast.error('Gagal mempublikasikan artikel')
+      toast.error('Gagal mempublikasikan blog')
     } finally {
       setIsSubmitting(false)
     }
@@ -129,16 +170,16 @@ export default function CreateBlogPage() {
 
         <Card ref={formRef}>
           <CardHeader>
-            <CardTitle>Tulis Artikel Baru</CardTitle>
+            <CardTitle>Tulis Blog Baru</CardTitle>
           </CardHeader>
           <CardContent>
             <form onSubmit={handleSubmit} className="space-y-6">
               {/* Title */}
               <div className="space-y-2">
-                <Label htmlFor="title">Judul Artikel</Label>
+                <Label htmlFor="title">Judul Blog</Label>
                 <Input
                   id="title"
-                  placeholder="Masukkan judul artikel..."
+                  placeholder="Masukkan judul blog..."
                   value={title}
                   onChange={(e) => setTitle(e.target.value)}
                   disabled={isSubmitting}
@@ -147,10 +188,10 @@ export default function CreateBlogPage() {
 
               {/* Excerpt */}
               <div className="space-y-2">
-                <Label htmlFor="excerpt">Ringkasan</Label>
+                <Label htmlFor="excerpt">Deskripsi Singkat</Label>
                 <Textarea
                   id="excerpt"
-                  placeholder="Tulis ringkasan singkat artikel (1-2 kalimat)..."
+                  placeholder="Tulis deskripsi singkat blog (1-2 kalimat)..."
                   value={excerpt}
                   onChange={(e) => setExcerpt(e.target.value)}
                   rows={2}
@@ -177,39 +218,45 @@ export default function CreateBlogPage() {
 
               {/* Cover Image */}
               <div className="space-y-2">
-                <Label>Gambar Cover</Label>
-                <div className="grid grid-cols-5 gap-2">
-                  {coverImages.map((img, index) => (
-                    <button
-                      key={index}
-                      type="button"
-                      onClick={() => setCoverImage(img)}
-                      disabled={isSubmitting}
-                      className={`aspect-video rounded-lg overflow-hidden border-2 transition-all ${
-                        coverImage === img
-                          ? 'border-primary ring-2 ring-primary/20'
-                          : 'border-border hover:border-primary/50'
-                      }`}
-                    >
-                      <img
-                        src={img}
-                        alt={`Cover ${index + 1}`}
-                        className="w-full h-full object-cover"
-                      />
-                    </button>
-                  ))}
-                </div>
+                <Label htmlFor="cover-image">Gambar Cover</Label>
+                <Input
+                  id="cover-image"
+                  type="file"
+                  accept="image/*"
+                  disabled={isSubmitting}
+                  onChange={(e) => {
+                    const file = e.target.files?.[0] ?? null
+                    setCoverImageFile(file)
+                  }}
+                />
+                <p className="text-xs text-muted-foreground">
+                  Gambar akan di-upload ke Cloudinary saat blog dipublikasikan.
+                </p>
+                {coverImagePreview && (
+                  <div className="rounded-lg border overflow-hidden">
+                    <img
+                      src={coverImagePreview}
+                      alt="Preview cover image"
+                      className="w-full max-h-72 object-cover"
+                    />
+                  </div>
+                )}
+                {!coverImagePreview && (
+                  <div className="rounded-lg border border-dashed p-6 text-center text-sm text-muted-foreground">
+                    Belum ada gambar dipilih
+                  </div>
+                )}
               </div>
 
               {/* Content */}
               <div className="space-y-2">
-                <Label htmlFor="content">Konten Artikel</Label>
+                <Label htmlFor="content">Isi Blog</Label>
                 <p className="text-xs text-muted-foreground mb-2">
                   Gunakan # untuk heading, ## untuk subheading, - untuk list
                 </p>
                 <Textarea
                   id="content"
-                  placeholder="Tulis konten artikel Anda di sini..."
+                  placeholder="Tulis isi blog Anda di sini..."
                   value={content}
                   onChange={(e) => setContent(e.target.value)}
                   rows={15}
