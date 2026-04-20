@@ -25,7 +25,7 @@ export function Navbar() {
   const navLinks = [
     { href: '/', label: 'Beranda' },
     { href: '/scan', label: 'Scan Limbah' },
-    { href: '/blog', label: 'Artikel' },
+    { href: '/artikel', label: 'Artikel' },
     ...(user ? [
       { href: '/blog/create', label: 'Blog' },
       { href: '/dashboard', label: 'Dashboard' },
