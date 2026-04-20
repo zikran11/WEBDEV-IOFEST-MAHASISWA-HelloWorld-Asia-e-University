@@ -43,8 +43,11 @@ export default function ScanPage() {
     }, pageRef)
 
     return () => {
-      ctx.revert()
-      stopCamera()
+      // Delay GSAP cleanup to avoid conflicts with navigation
+      setTimeout(() => {
+        ctx.revert()
+        stopCamera()
+      }, 100)
     }
   }, [])
 
@@ -158,7 +161,16 @@ const analyzeImage = async (imageData: string) => {
       toast('Login untuk menyimpan hasil scan ke dashboard')
     }
 
-    router.push('/scan/result')
+    // Delay navigation slightly to avoid conflicts with GSAP cleanup
+    setTimeout(() => {
+      try {
+        router.push('/scan/result')
+      } catch (navError) {
+        console.error('Navigation error:', navError)
+        // Fallback: use window.location as last resort
+        window.location.href = '/scan/result'
+      }
+    }, 50)
 
   } catch (err) {
     console.error(err)
@@ -262,10 +274,10 @@ const capturePhoto = async () => {
                         onChange={handleFileUpload}
                       />
 
-                      <div className="w-full flex gap-3 mt-4">
+                      <div className="w-full flex flex-col gap-3 mt-4 sm:flex-row">
                         <Button
                           variant="outline"
-                          className="flex-1 flex items-center justify-center gap-2"
+                          className="w-full flex-1 flex items-center justify-center gap-2"
                           onClick={(e) => {
                             e.stopPropagation()
                             fileInputRef.current?.click()
@@ -276,7 +288,7 @@ const capturePhoto = async () => {
                         </Button>
 
                         <Button
-                          className="flex-1 flex items-center justify-center gap-2"
+                          className="w-full flex-1 flex items-center justify-center gap-2"
                           onClick={(e) => {
                             e.stopPropagation()
                             startCamera()

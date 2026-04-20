@@ -113,7 +113,10 @@ export default function DashboardPage() {
       })
     }, pageRef)
 
-    return () => ctx.revert()
+    return () => {
+      // Delay GSAP cleanup to avoid conflicts with navigation
+      setTimeout(() => ctx.revert(), 100)
+    }
   }, [])
 
   if (!user) {
@@ -294,7 +297,14 @@ export default function DashboardPage() {
               recentScans.map((scan, i) => (
                 <div
                   key={i}
-                  onClick={() => router.push('/scan/result')}
+                  onClick={() => {
+                    try {
+                      router.push('/scan/result')
+                    } catch (navError) {
+                      console.error('Navigation error:', navError)
+                      window.location.href = '/scan/result'
+                    }
+                  }}
                   className="flex items-center gap-4 p-3 rounded-lg border hover:bg-muted/50 cursor-pointer transition"
                 >
                   <img src={scan.imageUrl} className="w-14 h-14 rounded-md object-cover" />

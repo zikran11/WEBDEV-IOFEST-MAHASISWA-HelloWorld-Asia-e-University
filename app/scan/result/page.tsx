@@ -43,7 +43,15 @@ export default function ResultPage() {
     if (storedResult) {
       setResult(JSON.parse(storedResult))
     } else {
-      router.push('/scan')
+      // Delay navigation to avoid conflicts
+      setTimeout(() => {
+        try {
+          router.push('/scan')
+        } catch (navError) {
+          console.error('Navigation error:', navError)
+          window.location.href = '/scan'
+        }
+      }, 50)
     }
   }, [router])
 
@@ -133,7 +141,10 @@ export default function ResultPage() {
       }
     }, pageRef)
 
-    return () => ctx.revert()
+    return () => {
+      // Delay GSAP cleanup to avoid conflicts with navigation
+      setTimeout(() => ctx.revert(), 100)
+    }
   }, [result])
 
   if (!result) {
@@ -172,7 +183,14 @@ export default function ResultPage() {
               <p className="text-lg text-muted-foreground text-center">
                 Limit AI telah tercapai. Hanya opsi scan ulang yang tersedia.
               </p>
-              <Button className="w-full md:w-auto" onClick={() => router.push('/scan')}>
+              <Button className="w-full md:w-auto" onClick={() => {
+                try {
+                  router.push('/scan')
+                } catch (navError) {
+                  console.error('Navigation error:', navError)
+                  window.location.href = '/scan'
+                }
+              }}>
                 Scan Ulang
               </Button>
             </CardContent>
@@ -189,7 +207,14 @@ export default function ResultPage() {
         <Button
           variant="ghost"
           className="mb-6 gap-2"
-          onClick={() => router.push('/scan')}
+          onClick={() => {
+            try {
+              router.push('/scan')
+            } catch (navError) {
+              console.error('Navigation error:', navError)
+              window.location.href = '/scan'
+            }
+          }}
         >
           <ArrowLeft className="w-4 h-4" />
           Kembali
@@ -230,7 +255,14 @@ export default function ResultPage() {
                   </p>
                 </div>
 
-                <Button className="w-full md:w-auto" onClick={() => router.push('/scan')}>
+                <Button className="w-full md:w-auto" onClick={() => {
+                  try {
+                    router.push('/scan')
+                  } catch (navError) {
+                    console.error('Navigation error:', navError)
+                    window.location.href = '/scan'
+                  }
+                }}>
                   Scan Ulang
                 </Button>
               </CardContent>
@@ -312,7 +344,14 @@ export default function ResultPage() {
                   </ul>
                 </div>
 
-                <Button className="w-full" onClick={() => router.push('/scan')}>
+                <Button className="w-full" onClick={() => {
+                  try {
+                    router.push('/scan')
+                  } catch (navError) {
+                    console.error('Navigation error:', navError)
+                    window.location.href = '/scan'
+                  }
+                }}>
                   Scan Ulang
                 </Button>
               </div>
