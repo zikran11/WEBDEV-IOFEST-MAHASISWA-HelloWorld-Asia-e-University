@@ -24,7 +24,7 @@ const getFriendlyErrorMessage = (err: unknown) => {
     if (code === 'auth/invalid-credential') return 'Email atau password salah'
     if (code === 'auth/user-not-found') return 'Akun tidak ditemukan'
     if (code === 'auth/too-many-requests') return 'Terlalu banyak percobaan. Coba lagi nanti'
-    if (code === 'auth/popup-closed-by-user') return 'Login Google dibatalkan'
+
   }
 
   return err instanceof Error ? err.message : 'Terjadi kesalahan saat masuk'
@@ -32,7 +32,7 @@ const getFriendlyErrorMessage = (err: unknown) => {
 
 export default function LoginPage() {
   const router = useRouter()
-  const { user, signIn, signInWithGoogle, loading: authLoading } = useAuth()
+  const { user, signIn, loading: authLoading } = useAuth()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [isLoading, setIsLoading] = useState(false)
@@ -78,22 +78,7 @@ useEffect(() => {
     }
   }
 
-  const handleGoogleSignIn = async () => {
-    setError('')
-    setIsLoading(true)
 
-    try {
-      await signInWithGoogle()
-      toast.success('Berhasil masuk dengan Google!')
-      router.push('/dashboard')
-    } catch (err: unknown) {
-      const errorMessage = getFriendlyErrorMessage(err)
-      setError(errorMessage)
-      toast.error('Gagal masuk dengan Google')
-    } finally {
-      setIsLoading(false)
-    }
-  }
 
   if (authLoading) {
     return (
@@ -186,25 +171,6 @@ useEffect(() => {
                 )}
               </Button>
             </form>
-
-            <div className="relative my-6">
-              <Separator />
-              <span className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 bg-card px-2 text-xs text-muted-foreground">
-                atau
-              </span>
-            </div>
-
-            <Button
-              type="button"
-              variant="outline"
-              className="w-full"
-              onClick={handleGoogleSignIn}
-              disabled={isLoading}
-            >
-              Masuk dengan Google
-            </Button>
-
-
 
             <p className="mt-6 text-center text-sm text-muted-foreground">
               Belum punya akun?{' '}

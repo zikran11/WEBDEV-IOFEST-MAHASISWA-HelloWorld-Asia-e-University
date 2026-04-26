@@ -25,7 +25,7 @@ const getFriendlyErrorMessage = (err: unknown) => {
     if (code === 'auth/email-already-in-use') return 'Email sudah terdaftar'
     if (code === 'auth/invalid-email') return 'Format email tidak valid'
     if (code === 'auth/weak-password') return 'Password terlalu lemah'
-    if (code === 'auth/popup-closed-by-user') return 'Login Google dibatalkan'
+
   }
 
   return err instanceof Error ? err.message : 'Terjadi kesalahan saat mendaftar'
@@ -33,7 +33,7 @@ const getFriendlyErrorMessage = (err: unknown) => {
 
 export default function RegisterPage() {
   const router = useRouter()
-  const { user, signUp, signInWithGoogle, loading: authLoading } = useAuth()
+  const { user, signUp, loading: authLoading } = useAuth()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [confirmPassword, setConfirmPassword] = useState('')
@@ -107,22 +107,7 @@ export default function RegisterPage() {
     }
   }
 
-  const handleGoogleSignIn = async () => {
-    setError('')
-    setIsLoading(true)
 
-    try {
-      await signInWithGoogle()
-      toast.success('Berhasil masuk dengan Google!')
-      router.push('/dashboard')
-    } catch (err: unknown) {
-      const errorMessage = getFriendlyErrorMessage(err)
-      setError(errorMessage)
-      toast.error('Gagal masuk dengan Google')
-    } finally {
-      setIsLoading(false)
-    }
-  }
 
   if (authLoading) {
     return (
@@ -271,24 +256,6 @@ export default function RegisterPage() {
                 )}
               </Button>
             </form>
-
-            <div className="relative my-6">
-              <Separator />
-              <span className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 bg-card px-2 text-xs text-muted-foreground">
-                atau
-              </span>
-            </div>
-
-            <Button
-              type="button"
-              variant="outline"
-              className="w-full"
-              onClick={handleGoogleSignIn}
-              disabled={isLoading}
-            >
-              Daftar/Masuk dengan Google
-            </Button>
-
 
             <p className="mt-6 text-center text-sm text-muted-foreground">
               Sudah punya akun?{' '}

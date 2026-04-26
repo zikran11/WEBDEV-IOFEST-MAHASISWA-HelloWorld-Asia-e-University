@@ -19,13 +19,16 @@ export default function ArtikelPage() {
   const [searchQuery, setSearchQuery] = useState('')
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null)
 
+  // Define the fixed categories
+  const fixedCategories = ['Lingkungan', 'Tips & Trick', 'Kreasi', 'Edukasi']
+
   const pageRef = useRef<HTMLDivElement>(null)
   const headerRef = useRef<HTMLDivElement>(null)
   const cardsRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
     setPosts(getAllPosts())
-    setCategories(getCategories())
+    setCategories(fixedCategories)
   }, [])
 
   useEffect(() => {

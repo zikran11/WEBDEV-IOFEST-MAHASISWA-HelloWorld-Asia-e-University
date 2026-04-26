@@ -26,17 +26,16 @@ import { useAuth } from '@/contexts/auth-context'
 import { toast } from 'sonner'
 
 const defaultCategories = [
-  'Daur Ulang',
-  'Edukasi',
-  'Komunitas',
-  'Tips & Trik',
   'Lingkungan',
-  'Teknologi'
+  'Tips',
+  'Kreasi',
+  'Edukasi'
 ]
 
 export default function CreateBlogPage() {
   const router = useRouter()
   const { user, loading } = useAuth()
+
   const [categories, setCategories] = useState<string[]>(defaultCategories)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [title, setTitle] = useState('')
@@ -45,6 +44,7 @@ export default function CreateBlogPage() {
   const [category, setCategory] = useState('')
   const [coverImageFile, setCoverImageFile] = useState<File | null>(null)
   const [coverImagePreview, setCoverImagePreview] = useState('')
+
   const pageRef = useRef<HTMLDivElement>(null)
   const formRef = useRef<HTMLDivElement>(null)
 
@@ -61,11 +61,9 @@ export default function CreateBlogPage() {
         const existingCategories = getCategoriesFromPosts(posts)
         setCategories(Array.from(new Set([...defaultCategories, ...existingCategories])))
       } catch (error) {
-        toast.error(getFirestoreErrorMessage(error, 'Gagal memuat kategori blog dari Firestore'))
-        // Keep default categories when fetch fails.
+        toast.error(getFirestoreErrorMessage(error, 'Gagal memuat kategori'))
       }
     }
-
     loadCategories()
   }, [])
 
@@ -74,7 +72,7 @@ export default function CreateBlogPage() {
       gsap.fromTo(
         formRef.current,
         { opacity: 0, y: 30 },
-        { opacity: 1, y: 0, duration: 0.6, ease: 'power3.out' }
+        { opacity: 1, y: 0, duration: 0.6 }
       )
     }, pageRef)
 
@@ -93,20 +91,20 @@ export default function CreateBlogPage() {
     return () => URL.revokeObjectURL(objectUrl)
   }, [coverImageFile])
 
+  // 🔥 Upload ke Cloudinary
   const uploadImageToCloudinary = async (file: File) => {
     const cloudName = process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME
     const uploadPreset = process.env.NEXT_PUBLIC_CLOUDINARY_UPLOAD_PRESET
 
     if (!cloudName || !uploadPreset) {
-      throw new Error('Cloudinary config is missing')
+      throw new Error('Cloudinary belum dikonfigurasi')
     }
 
     const formData = new FormData()
     formData.append('file', file)
     formData.append('upload_preset', uploadPreset)
-    formData.append('folder', 'smart-waste/blog')
 
-    const response = await fetch(
+    const res = await fetch(
       `https://api.cloudinary.com/v1_1/${cloudName}/image/upload`,
       {
         method: 'POST',
@@ -114,201 +112,144 @@ export default function CreateBlogPage() {
       }
     )
 
-    if (!response.ok) {
-      throw new Error('Failed to upload image')
-    }
+    if (!res.ok) throw new Error('Upload gagal')
 
-    const result = await response.json()
-    return result.secure_url as string
+    const data = await res.json()
+    return data.secure_url
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
 
-    if (!title || !excerpt || !content || !category || !coverImageFile) {
-      toast.error('Mohon lengkapi semua field termasuk gambar cover')
+    if (!title || !excerpt || !content || !category) {
+      toast.error('Lengkapi semua field')
+      return
+    }
+
+    if (!coverImageFile) {
+      toast.error('Upload gambar cover')
+      return
+    }
+
+    if (!user?.uid) {
+      toast.error('User tidak valid')
       return
     }
 
     setIsSubmitting(true)
 
     try {
-      if (!user?.uid) {
-        toast.error('Sesi login tidak valid. Silakan login ulang.')
-        setIsSubmitting(false)
-        return
-      }
+      // Upload gambar
+      const imageUrl = await uploadImageToCloudinary(coverImageFile)
 
-      const coverImageUrl = await uploadImageToCloudinary(coverImageFile)
-
+      // Simpan ke Firestore
       await createPostFirestore({
         title,
         excerpt,
         content,
         category,
-        coverImage: coverImageUrl,
+        coverImage: imageUrl,
         author: {
-          name: user?.email?.split('@')[0] || 'Anonymous',
-          email: user?.email || 'anonymous@example.com'
+          name: user.email?.split('@')[0] || 'User',
+          email: user.email || ''
         }
       }, user.uid)
 
-      toast.success('Blog berhasil dipublikasikan!')
+      toast.success('Blog berhasil dipublish!')
       router.push('/blog')
     } catch (error) {
-      toast.error(getFirestoreErrorMessage(error, 'Gagal mempublikasikan blog'))
+      toast.error(getFirestoreErrorMessage(error, 'Gagal publish blog'))
     } finally {
       setIsSubmitting(false)
     }
   }
 
   if (loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="animate-spin w-8 h-8 border-4 border-primary border-t-transparent rounded-full" />
-      </div>
-    )
+    return <div className="flex justify-center p-10">Loading...</div>
   }
 
-  if (!user) {
-    return null
-  }
+  if (!user) return null
 
   return (
-    <div ref={pageRef} className="min-h-screen bg-gradient-to-b from-background to-secondary/20 py-8">
-      <div className="container px-4 mx-auto max-w-3xl">
-        {/* Back Button */}
-        <Button
-          variant="ghost"
-          className="mb-6 gap-2"
-          onClick={() => router.push('/blog')}
-        >
-          <ArrowLeft className="w-4 h-4" />
-          Kembali
+    <div ref={pageRef} className="min-h-screen py-8">
+      <div className="container max-w-3xl mx-auto px-4">
+
+        <Button variant="ghost" onClick={() => router.push('/blog')}>
+          <ArrowLeft className="w-4 h-4 mr-2" /> Kembali
         </Button>
 
-        <Card ref={formRef}>
+        <Card ref={formRef} className="mt-4">
           <CardHeader>
             <CardTitle>Tulis Blog Baru</CardTitle>
           </CardHeader>
+
           <CardContent>
             <form onSubmit={handleSubmit} className="space-y-6">
-              {/* Title */}
-              <div className="space-y-2">
-                <Label htmlFor="title">Judul Blog</Label>
+
+              <Input
+                placeholder="Judul Blog"
+                value={title}
+                onChange={(e) => setTitle(e.target.value)}
+              />
+
+              <Textarea
+                placeholder="Deskripsi singkat"
+                value={excerpt}
+                onChange={(e) => setExcerpt(e.target.value)}
+              />
+
+              <Select value={category} onValueChange={setCategory}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Pilih kategori" />
+                </SelectTrigger>
+                <SelectContent>
+                  {categories.map((c) => (
+                    <SelectItem key={c} value={c}>{c}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+
+              <div>
+                <Label>Upload Gambar</Label>
                 <Input
-                  id="title"
-                  placeholder="Masukkan judul blog..."
-                  value={title}
-                  onChange={(e) => setTitle(e.target.value)}
-                  disabled={isSubmitting}
-                />
-              </div>
-
-              {/* Excerpt */}
-              <div className="space-y-2">
-                <Label htmlFor="excerpt">Deskripsi Singkat</Label>
-                <Textarea
-                  id="excerpt"
-                  placeholder="Tulis deskripsi singkat blog (1-2 kalimat)..."
-                  value={excerpt}
-                  onChange={(e) => setExcerpt(e.target.value)}
-                  rows={2}
-                  disabled={isSubmitting}
-                />
-              </div>
-
-              {/* Category */}
-              <div className="space-y-2">
-                <Label htmlFor="category">Kategori</Label>
-                <Select value={category} onValueChange={setCategory} disabled={isSubmitting}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Pilih kategori" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {categories.map((cat) => (
-                      <SelectItem key={cat} value={cat}>
-                        {cat}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-
-              {/* Cover Image */}
-              <div className="space-y-2">
-                <Label htmlFor="cover-image">Gambar Cover</Label>
-                <Input
-                  id="cover-image"
                   type="file"
                   accept="image/*"
-                  disabled={isSubmitting}
                   onChange={(e) => {
-                    const file = e.target.files?.[0] ?? null
-                    setCoverImageFile(file)
+                    const file = e.target.files?.[0]
+                    if (file) setCoverImageFile(file)
                   }}
                 />
-                <p className="text-xs text-muted-foreground">
-                  Gambar akan di-upload ke Cloudinary saat blog dipublikasikan.
-                </p>
-                {coverImagePreview && (
-                  <div className="rounded-lg border overflow-hidden">
-                    <img
-                      src={coverImagePreview}
-                      alt="Preview cover image"
-                      className="w-full max-h-72 object-cover"
-                    />
-                  </div>
-                )}
-                {!coverImagePreview && (
-                  <div className="rounded-lg border border-dashed p-6 text-center text-sm text-muted-foreground">
-                    Belum ada gambar dipilih
-                  </div>
-                )}
               </div>
 
-              {/* Content */}
-              <div className="space-y-2">
-                <Label htmlFor="content">Isi Blog</Label>
-                <p className="text-xs text-muted-foreground mb-2">
-                  Gunakan # untuk heading, ## untuk subheading, - untuk list
-                </p>
-                <Textarea
-                  id="content"
-                  placeholder="Tulis isi blog Anda di sini..."
-                  value={content}
-                  onChange={(e) => setContent(e.target.value)}
-                  rows={15}
-                  disabled={isSubmitting}
-                  className="font-mono text-sm"
-                />
-              </div>
+              {coverImagePreview && (
+                <div className="w-full h-64 overflow-hidden rounded-lg">
+                  <img
+                    src={coverImagePreview}
+                    className="w-full h-full object-cover"
+                  />
+                </div>
+              )}
 
-              {/* Submit Button */}
-              <div className="flex gap-4">
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={() => router.push('/blog')}
-                  disabled={isSubmitting}
-                  className="flex-1"
-                >
-                  Batal
-                </Button>
-                <Button type="submit" disabled={isSubmitting} className="flex-1">
-                  {isSubmitting ? (
-                    <>
-                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                      Mempublikasikan...
-                    </>
-                  ) : (
-                    'Publikasikan'
-                  )}
-                </Button>
-              </div>
+              <Textarea
+                rows={10}
+                placeholder="Isi blog..."
+                value={content}
+                onChange={(e) => setContent(e.target.value)}
+              />
+
+              <Button type="submit" disabled={isSubmitting}>
+                {isSubmitting ? (
+                  <>
+                    <Loader2 className="animate-spin mr-2" />
+                    Uploading...
+                  </>
+                ) : 'Publikasikan'}
+              </Button>
+
             </form>
           </CardContent>
         </Card>
+
       </div>
     </div>
   )
