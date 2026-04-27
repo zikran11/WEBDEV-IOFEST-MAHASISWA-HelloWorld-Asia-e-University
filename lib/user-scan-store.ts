@@ -6,6 +6,7 @@ import {
   query,
   setDoc,
   Timestamp,
+  writeBatch,
 } from 'firebase/firestore'
 import { db, isFirebaseConfigured } from '@/lib/firebase'
 import { WasteAnalysisResult } from './mock-ai-data'
@@ -35,6 +36,29 @@ function saveLocalUserScans(userId: string, scans: WasteAnalysisResult[]) {
     localStorage.setItem(getLocalStorageKey(userId), JSON.stringify(scans))
   } catch {
     // ignore storage errors
+  }
+}
+
+export function clearCachedUserScanHistory(userId: string) {
+  if (typeof window === 'undefined') return
+
+  try {
+    localStorage.removeItem(getLocalStorageKey(userId))
+  } catch {
+    // ignore storage errors
+  }
+}
+
+export async function clearUserScanHistory(userId: string): Promise<void> {
+  clearCachedUserScanHistory(userId)
+
+  if (isFirebaseConfigured && db) {
+    const snapshot = await getDocs(createUserScansCollection(userId))
+    if (snapshot.empty) return
+
+    const batch = writeBatch(db)
+    snapshot.docs.forEach((docSnap) => batch.delete(docSnap.ref))
+    await batch.commit()
   }
 }
 

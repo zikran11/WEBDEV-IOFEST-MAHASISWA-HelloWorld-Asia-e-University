@@ -9,8 +9,10 @@ import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Camera, Trash2, Clock, Leaf } from 'lucide-react'
 import { getScanHistory, clearHistory } from '@/lib/waste-store'
+import { clearUserScanHistory, getCachedUserScanHistory, getUserScanHistory } from '@/lib/user-scan-store'
 import { WasteAnalysisResult, formatCurrency, getCategoryColor } from '@/lib/mock-ai-data'
 import { cn } from '@/lib/utils'
+import { useAuth } from '@/contexts/auth-context'
 import {
   AlertDialog,
   AlertDialogAction,
@@ -24,14 +26,34 @@ import {
 } from '@/components/ui/alert-dialog'
 
 export default function HistoryPage() {
+  const { user } = useAuth()
   const [history, setHistory] = useState<WasteAnalysisResult[]>([])
+  const [loading, setLoading] = useState(true)
   const pageRef = useRef<HTMLDivElement>(null)
   const headerRef = useRef<HTMLDivElement>(null)
   const cardsRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
-    setHistory(getScanHistory())
-  }, [])
+    const loadHistory = async () => {
+      if (user) {
+        const cachedHistory = getCachedUserScanHistory(user.uid)
+        setHistory(cachedHistory)
+
+        try {
+          const remoteHistory = await getUserScanHistory(user.uid)
+          setHistory(remoteHistory)
+        } catch (error) {
+          console.error('Gagal memuat riwayat user dari database:', error)
+        }
+      } else {
+        setHistory(getScanHistory())
+      }
+
+      setLoading(false)
+    }
+
+    loadHistory()
+  }, [user])
 
   useEffect(() => {
     gsap.registerPlugin(ScrollTrigger)
@@ -68,8 +90,17 @@ export default function HistoryPage() {
     return () => ctx.revert()
   }, [history])
 
-  const handleClearHistory = () => {
-    clearHistory()
+  const handleClearHistory = async () => {
+    if (user) {
+      try {
+        await clearUserScanHistory(user.uid)
+      } catch (error) {
+        console.error('Gagal menghapus riwayat dari Firestore:', error)
+      }
+    } else {
+      clearHistory()
+    }
+
     setHistory([])
   }
 
@@ -81,6 +112,14 @@ export default function HistoryPage() {
       hour: '2-digit',
       minute: '2-digit'
     })
+  }
+
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="animate-spin w-10 h-10 border-4 border-primary border-t-transparent rounded-full" />
+      </div>
+    )
   }
 
   return (
